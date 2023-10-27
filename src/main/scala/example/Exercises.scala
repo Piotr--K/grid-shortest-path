@@ -116,6 +116,12 @@ object Monoid {
 //   implicit def optionXXX[A](implicit m: TypeClass[A]): TypeClass[Option[A]]=??? - implementation expressed in terms of m
 /**********
  * Trick *
+ * this allow us to reduce indiraction in creating an interface
+ * where we basically duplicate the type class interface
+ * and in case type class implements many function
+ * is quite bloated
+ * Withg the apply method we can see the usage in client below
+ * we can skip this indiration
  **********/
   def apply[A](implicit m: Monoid[A]): Monoid[A] = m
 }
@@ -127,12 +133,14 @@ object Monoid {
 object MonoidOps {
   def combineMe1[A](v1: A, v2:A)(implicit m: Monoid[A]): A = m.combine(v1, v2)
   def combineMe2[A: Monoid](v1: A, v2:A): A = implicitly[Monoid[A]].combine(v1, v2)
-  //and instead of using implicitly above - we can use 1 more trick from Cats
-  //and add an apply method to Monoid companion object, to be able to call it like:
+  
   def combineMe3[A: Monoid](v1: A, v2: A): A = Monoid.apply[A].combine(v1, v2)
-  //or even shorter
+  //or even shorter - which really resolves to last method implemented in Client
+  //which is quite nice as doesn't require listing each method of the Type Class
   def combineMe4[A: Monoid](v1: A, v2: A): A = Monoid[A].combine(v1, v2)
-  //So the choice is really combineMe1 or combineMe4 - i would probably go for 1
+  //So the choice is really combineMe1 or combineMe4
+  //1 is good if TypeClass is relateviley small
+  //4 is good for larger TypeClasses
 }
 
 // on client side import type class instances and call relevant method
@@ -140,6 +148,9 @@ object Client {
   MonoidOps.combineMe1(1, 2)
   MonoidOps.combineMe2(1, 2)
   MonoidOps.combineMe3(1, 2)
+  //and instead of using implicitly above - we can use 1 more trick from Cats
+  //and add an apply method to Monoid companion object, to be able to call it like:
+  Monoid[Int].combine(1, 3)
 }
   
 //Interface Syntax (extension method), 2 ways
@@ -149,7 +160,7 @@ object MonoidSyntax {
     def combineMe(v2: A)(implicit m: Monoid[A]): A = m.combine(v1, v2)
   }
 }
-//via implicit method
+//via implicit method - usage Client3 but is not working - TODO
 object MonoidSyntax2 {
   implicit def monoidOpsSyntax[A](v1: A) {
     def combineMe(v2: A)(implicit m: Monoid[A]): A = m.combine(v1, v2)
